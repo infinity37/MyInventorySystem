@@ -21,7 +21,7 @@ public:
 	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Replicated)
 		int32 CurrentWeight;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated)
 		int32 BackPackSize;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadWrite)

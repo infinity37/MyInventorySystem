@@ -22,7 +22,7 @@ UBackPackComponent::UBackPackComponent()
 	PrimaryComponentTick.bCanEverTick = true;
 
 	Owner = NULL;
-	BackPackSize = 100;
+	BackPackSize = 150;
 	CurrentWeight = 0;
 	WeaponSlot.Init(NULL, 2);
 	AttachmentSlot.Init(NULL, 4);
@@ -54,6 +54,7 @@ void UBackPackComponent::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& O
 
 	DOREPLIFETIME_CONDITION(UBackPackComponent, CurrentWeight, COND_OwnerOnly);
 	DOREPLIFETIME_CONDITION(UBackPackComponent, NormalSpace, COND_OwnerOnly);
+	DOREPLIFETIME_CONDITION(UBackPackComponent, BackPackSize, COND_OwnerOnly);
 }
 
 bool UBackPackComponent::CanAddItem(int32 ItemTypeId, int32 Count) {

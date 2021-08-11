@@ -33,6 +33,9 @@ public:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category=Camera)
 	float BaseLookUpRate;
 
+	UPROPERTY(EditAnywhere, BlueprintReadOnly)
+		TArray<AActor*> PickUpList;
+
 	UFUNCTION(BlueprintCallable)
 		void SetCurrentWeapon(int32 cw);
 

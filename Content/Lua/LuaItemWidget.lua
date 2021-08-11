@@ -20,6 +20,9 @@ end
 
 local uiclass = slua.loadUI('/Game/UI/DropCountBox.DropCountBox')
 function itemwidget:DropItemFunction()
+    local mypc = self:GetOwningPlayer()
+    print(self)
+    --WBL.Create(this, uiclass, mypc)
     self.Super:DropItemFunction()
 end
 
@@ -58,8 +61,10 @@ function itemwidget:OnMouseButtonDown(MyGeometry, MouseEvent)
     ---print("OnMouseOverride")
     local cursorpos = KIL.PointerEvent_GetScreenSpacePosition(MouseEvent)
     self.DragOffset = SBL.AbsolutetoLocal(MyGeometry, cursorpos)
+    local pressedbutton = KIL.PointerEvent_GetEffectingButton(MouseEvent)
     local key = FKey()
     key.KeyName = "LeftMouseButton"
+    print(pressedbutton,KeyName,key)
     return WBL.DetectDragIfPressed(MouseEvent,self,key)
 end
 
