@@ -13,12 +13,16 @@ AMyBagItem_Weapon::AMyBagItem_Weapon() {
 	AmmoType = 0;
 	AttachmentType.Init(-1, 2);
 	AttachmentType[0] = 201;
+	bReplicates = true;
 }
 
 void AMyBagItem_Weapon::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const {
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 	DOREPLIFETIME(AMyBagItem_Weapon, AmmoInChip);
 	DOREPLIFETIME(AMyBagItem_Weapon, MaxAmmoCount);
+	DOREPLIFETIME(AMyBagItem_Weapon, Damage);
+	DOREPLIFETIME(AMyBagItem_Weapon, AmmoType);
+	DOREPLIFETIME(AMyBagItem_Weapon, AttachmentType);
 }
 
 void AMyBagItem_Weapon::EquipItem() {
@@ -42,17 +46,18 @@ void AMyBagItem_Weapon::UnEquipItem() {
 void AMyBagItem_Weapon::Reload() {
 	AInventorySystemCharacter* player = Cast<AInventorySystemCharacter>(ItemBelongTo);
 	AMyPlayerController* PC = Cast<AMyPlayerController>(player->GetController());
+	ABagItem* myAmmo = Cast<ABagItem>(PC->myBackPack->GetItemById(AmmoType));
 	
 	int32 MissingAmmo = MaxAmmoCount - AmmoInChip;
 	int AmmoInBag = PC->GetItemCountById(AmmoType);
 	if (AmmoInBag == 0) return;
 	if (AmmoInBag >= MissingAmmo) {
 		SetAmmoInChip(MaxAmmoCount);
-		PC->myBackPack->NormalSpace[AmmoType]->DecItem(MissingAmmo);
+		myAmmo->DecItem(MissingAmmo);
 	}
 	else {
 		SetAmmoInChip(AmmoInChip+AmmoInBag);
-		PC->myBackPack->NormalSpace[AmmoType]->DecItem(AmmoInBag);
+		myAmmo->DecItem(AmmoInBag);
 	}
 }
 
@@ -63,27 +68,14 @@ bool AMyBagItem_Weapon::IsEquiped() {
 
 void AMyBagItem_Weapon::SetAmmoInChip(int32 aic) {
 	if (aic > MaxAmmoCount)return;
-	if (GetLocalRole() < ROLE_Authority) {
-		ServerSetAmmoInChip(aic);
-	}
-	else {
-		AmmoInChip = aic;
-	}
+	AmmoInChip = aic;
 }
 
-void AMyBagItem_Weapon::ServerSetAmmoInChip_Implementation(int32 aic) {
-	SetAmmoInChip(aic);
-}
 
 void AMyBagItem_Weapon::SetMaxAmmoCount(int32 mac) {
-	if (GetLocalRole() < ROLE_Authority) {
-		ServerSetMaxAmmoCount(mac);
-	}
-	else {
-		MaxAmmoCount = mac;
-	}
+	MaxAmmoCount = mac;
 }
 
-void AMyBagItem_Weapon::ServerSetMaxAmmoCount_Implementation(int32 mac) {
-	SetMaxAmmoCount(mac);
+void AMyBagItem_Weapon::SetDamage(int32 dmg) {
+	Damage = dmg;
 }

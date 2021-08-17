@@ -19,7 +19,7 @@ public:
 	// Sets default values for this actor's properties
 	ABagItem();
 
-	UPROPERTY(EditAnywhere, BlueprintReadOnly)
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, ReplicatedUsing = OnRep_ItemTypeId)
 		int32 ItemTypeId;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Replicated)
@@ -34,7 +34,7 @@ public:
 	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Replicated)
 		bool ItemEquiped;
 
-	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Replicated)
+	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, ReplicatedUsing = OnRep_RefreshBagUI)
 		int32 ItemInSlot;
 
 	void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps)const override;
@@ -71,23 +71,14 @@ public:
 	UFUNCTION(BlueprintCallable)
 		void SetItemOwner(AActor* player);
 
-	UFUNCTION(Server, Reliable)
-		void ServerSetItemOwner(AActor* player);
-
-	UFUNCTION(Server, Reliable)
-		void ServerAddItem(int32 Count);
-
-	UFUNCTION(Server, Reliable)
-		void ServerDecItem(int32 Count);
-
-	UFUNCTION(Server, Reliable)
-		void ServerSetEquipState(bool mystate);
-
 	UFUNCTION(BlueprintCallable)
 		void SetInSlotState(int32 mystate);
 
-	UFUNCTION(Server, Reliable)
-		void ServerSetInSlotState(int32 mystate);
+	UFUNCTION()
+		void OnRep_ItemTypeId();
+
+	UFUNCTION()
+		void OnRep_RefreshBagUI();
 
 
 	int32 GetWeight();

@@ -9,18 +9,21 @@
 
 void AMyBagItem_Attachment::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const {
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
-	DOREPLIFETIME(AMyBagItem_Attachment, ParentWeapon);
+	DOREPLIFETIME(AMyBagItem_Attachment, ParentWeaponId);
 }
 
 AMyBagItem_Attachment::AMyBagItem_Attachment() {
-	ParentWeapon = NULL;
+	ParentWeaponId = -1;
 	ItemEquiped = false;
 }
 
 void AMyBagItem_Attachment::EquipItem() {
+	AInventorySystemCharacter* player = Cast<AInventorySystemCharacter>(ItemBelongTo);
+	AMyPlayerController* PC = Cast<AMyPlayerController>(player->GetController());
 	TArray<FEffectInfo> Effects = ItemInfo->Effects;
 	for (int i = 0; i < Effects.Num(); i++) {
-		AMyBagItem_Weapon* myweapon = Cast<AMyBagItem_Weapon>(ParentWeapon);
+		AMyBagItem_Weapon* myweapon = Cast<AMyBagItem_Weapon>(PC->myBackPack->GetItemById(ParentWeaponId));
+		AInventorySystemCharacter* myplayer = Cast<AInventorySystemCharacter>(ItemBelongTo);
 		switch (Effects[i].TargetAttr)
 		{
 		case AttriName::AmmoCount: {
@@ -40,8 +43,20 @@ void AMyBagItem_Attachment::EquipItem() {
 			}
 			break;
 		}
-		default:
+		case AttriName::Damage: {
+			switch (Effects[i].EffectCalc) {
+			case CalcType::CAdd:
+				myweapon->SetDamage(myweapon->Damage + Effects[i].calcValue);
+				if (myplayer->GetCurrentWeapon() == myweapon->ItemTypeId)
+					myplayer->SetIntAttribute(AttriName::Damage, myweapon->Damage);
+				break;
+			default:break;
+				break;
+			}
+		}
+		default: {
 			break;
+		}
 		}
 	}
 	SetEquipState(true);
@@ -49,8 +64,11 @@ void AMyBagItem_Attachment::EquipItem() {
 
 void AMyBagItem_Attachment::UnEquipItem() {
 	TArray<FEffectInfo> Effects = ItemInfo->Effects;
+	AInventorySystemCharacter* player = Cast<AInventorySystemCharacter>(ItemBelongTo);
+	AMyPlayerController* PC = Cast<AMyPlayerController>(player->GetController());
 	for (int i = 0; i < Effects.Num(); i++) {
-		AMyBagItem_Weapon* myweapon = Cast<AMyBagItem_Weapon>(ParentWeapon);
+		AMyBagItem_Weapon* myweapon = Cast<AMyBagItem_Weapon>(PC->myBackPack->GetItemById(ParentWeaponId));
+		AInventorySystemCharacter* myplayer = Cast<AInventorySystemCharacter>(ItemBelongTo);
 		switch (Effects[i].TargetAttr)
 		{
 		case AttriName::AmmoCount: {
@@ -61,8 +79,6 @@ void AMyBagItem_Attachment::UnEquipItem() {
 				if (myweapon->AmmoInChip > myweapon->MaxAmmoCount) {
 					int32 OutAmmo = myweapon->AmmoInChip - myweapon->MaxAmmoCount;
 					myweapon->AmmoInChip -= OutAmmo;
-					AInventorySystemCharacter* player = Cast<AInventorySystemCharacter>(ItemBelongTo);
-					AMyPlayerController* PC = Cast<AMyPlayerController>(player->GetController());
 					PC->myBackPack->AddAmmoToNormalSpace(myweapon->AmmoType, OutAmmo, ItemBelongTo);
 				}
 				break;
@@ -72,8 +88,20 @@ void AMyBagItem_Attachment::UnEquipItem() {
 			}
 			break;
 		}
-		default:
+		case AttriName::Damage: {
+			switch (Effects[i].EffectCalc) {
+			case CalcType::CAdd:
+				myweapon->SetDamage(myweapon->Damage - Effects[i].calcValue);
+				if (myplayer->GetCurrentWeapon() == myweapon->ItemTypeId)
+					myplayer->SetIntAttribute(AttriName::Damage, myweapon->Damage);
+				break;
+			default:break;
+				break;
+			}
+		}
+		default: {
 			break;
+		}
 		}
 	}
 	SetParentWeapon(NULL);
@@ -84,15 +112,8 @@ bool AMyBagItem_Attachment::IsEquiped() {
 	return ItemEquiped;
 }
 
-void AMyBagItem_Attachment::SetParentWeapon(AActor* Weapon) {
-	if (GetLocalRole() < ROLE_Authority) {
-		ServerSetParentWeapon(Weapon);
-	}
-	else {
-		ParentWeapon = Weapon;
-	}
+void AMyBagItem_Attachment::SetParentWeapon(int32 WeaponId) {
+	GEngine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Green, TEXT("SetParentId"));
+	ParentWeaponId = WeaponId;
 }
 
-void AMyBagItem_Attachment::ServerSetParentWeapon_Implementation(AActor* Weapon) {
-	SetParentWeapon(Weapon);
-}

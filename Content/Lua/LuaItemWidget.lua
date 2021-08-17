@@ -21,8 +21,7 @@ end
 local uiclass = slua.loadUI('/Game/UI/DropCountBox.DropCountBox')
 function itemwidget:DropItemFunction()
     local mypc = self:GetOwningPlayer()
-    print(self)
-    --WBL.Create(this, uiclass, mypc)
+    --WBL.Create(self, uiclass, mypc, self.MyBagItem)
     self.Super:DropItemFunction()
 end
 
@@ -32,6 +31,7 @@ function itemwidget:AddWeaponToSlot(SlotId)
     local backpack = mypc.MyBackPack
     backpack:AddToWeaponSlot(self.ItemTypeId, SlotId)
     mypp:RefreshBagUI()
+    mypp:EquipWeaponInSlot(SlotId)
 end
 
 function itemwidget:AddAttachmentToSlot(SlotId) 
@@ -64,7 +64,6 @@ function itemwidget:OnMouseButtonDown(MyGeometry, MouseEvent)
     local pressedbutton = KIL.PointerEvent_GetEffectingButton(MouseEvent)
     local key = FKey()
     key.KeyName = "LeftMouseButton"
-    print(pressedbutton,KeyName,key)
     return WBL.DetectDragIfPressed(MouseEvent,self,key)
 end
 

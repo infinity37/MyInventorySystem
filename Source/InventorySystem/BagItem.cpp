@@ -2,7 +2,8 @@
 
 
 #include "BagItem.h"
-
+#include "MyGameState.h"
+#include "InventorySystemCharacter.h"
 // Sets default values
 ABagItem::ABagItem()
 {
@@ -10,6 +11,8 @@ ABagItem::ABagItem()
 	PrimaryActorTick.bCanEverTick = true;
 	bReplicates = true;
 
+	//RootComponent = CreateDefaultSubobject<USceneComponent>(TEXT("aaa"));
+	bAlwaysRelevant = true;
 	ItemBelongTo = NULL;
 	ItemCount = 0;
 	ItemInSlot = -1;
@@ -36,6 +39,7 @@ void ABagItem::GetLifetimeReplicatedProps(TArray< FLifetimeProperty >& OutLifeti
 	DOREPLIFETIME(ABagItem, ItemInSlot);
 	DOREPLIFETIME(ABagItem, ItemEquiped);
 	DOREPLIFETIME(ABagItem, ItemBelongTo);
+	DOREPLIFETIME(ABagItem, ItemTypeId);
 }
 
 void ABagItem::EquipItem() {
@@ -71,67 +75,32 @@ FString ABagItem::GetDescription() {
 }
 
 void ABagItem::AddItem(int32 Count) {
-	if (GetLocalRole() < ROLE_Authority) {
-		ServerAddItem(Count);
-	}
-	else {
-		ItemCount += Count;
-	}
+	ItemCount += Count;
 }
 
 void ABagItem::DecItem(int32 Count) {
-	if (GetLocalRole() < ROLE_Authority) {
-		ServerDecItem(Count);
-	}
-	else {
-		ItemCount -= Count;
-	}
+	ItemCount -= Count;
 }
 
 void ABagItem::SetItemOwner(AActor* player) {
-	if (GetLocalRole() < ROLE_Authority) {
-		//ItemBelongTo = player;
-		ServerSetItemOwner(player);
-	}
-	else {
-		ItemBelongTo = player;
-	}
+	ItemBelongTo = player;
 }
 
 void ABagItem::SetEquipState(bool mystate) {
-	if (GetLocalRole() < ROLE_Authority) {
-		ServerSetEquipState(mystate);
-	}
-	else {
-		ItemEquiped = mystate;
-	}
+	ItemEquiped = mystate;
 }
 
 void ABagItem::SetInSlotState(int32 mystate) {
-	if (GetLocalRole() < ROLE_Authority) {
-		ServerSetInSlotState(mystate);
-	}
-	else {
-		ItemInSlot = mystate;
-	}
+	ItemInSlot = mystate;
 }
 
-void ABagItem::ServerAddItem_Implementation(int32 Count) {
-	AddItem(Count);
+void ABagItem::OnRep_ItemTypeId() {
+	AMyGameState* GameState = Cast<AMyGameState>(GetWorld()->GetGameState());
+	UItemInfoTable* ItemTable = GameState->GetItemInfoTable();
+	ItemInfo = ItemTable->GetItemInfoById(ItemTypeId);
 }
 
-void ABagItem::ServerDecItem_Implementation(int32 Count) {
-	DecItem(Count);
-}
-
-void ABagItem::ServerSetEquipState_Implementation(bool mystate) {
-	SetEquipState(mystate);
-}
-
-void ABagItem::ServerSetInSlotState_Implementation(int32 mystate) {
-	SetInSlotState(mystate);
-}
-
-void ABagItem::ServerSetItemOwner_Implementation(AActor* player) {
-	SetItemOwner(player);
+void ABagItem::OnRep_RefreshBagUI() {
+	AInventorySystemCharacter* player = Cast<AInventorySystemCharacter>(ItemBelongTo);
+	player->RefreshBagUI();
 }

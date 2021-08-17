@@ -33,21 +33,6 @@ public:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category=Camera)
 	float BaseLookUpRate;
 
-	UPROPERTY(EditAnywhere, BlueprintReadOnly)
-		TArray<AActor*> PickUpList;
-
-	UFUNCTION(BlueprintCallable)
-		void SetCurrentWeapon(int32 cw);
-
-	UFUNCTION(BlueprintCallable)
-		int32 GetCurrentWeapon();
-
-	UFUNCTION(Server, Reliable)
-		void GenerateNewPickUp(int32 TypeId, int32 Count);
-
-
-	void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps)const override;
-
 protected:
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated)
@@ -56,11 +41,8 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 		int32 MaxHealth;
 
-	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, ReplicatedUsing = OnRep_CurrentWeaponDebug)
+	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Replicated)
 		int32 CurrentWeaponId;
-
-	//UPROPERTY(VisibleAnywhere, BlueprintReadWrite, ReplicatedUsing = OnRep_CurrentWeaponDebug)
-	//	AActor* CurrentWeaponId;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Replicated)
 		int32 Damage;
@@ -71,24 +53,40 @@ protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Replicated)
 		int32 Energy;
 
-	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Replicated)
+	UPROPERTY(VisibleAnywhere, BlueprintReadWrite)
 		int32 MaxEnergy;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Replicated)
 		float EnergyMul;
 
 public:
+
+	void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps)const override;
+
+	UFUNCTION(Server, Reliable)
+		void GenerateNewPickUp(int32 TypeId, int32 Count);
+		void GenerateNewPickUp_Implementation(int32 TypeId, int32 Count);	
+
+	UFUNCTION(BlueprintCallable)
+		void SetCurrentWeapon(int32 cw);
+	UFUNCTION(BlueprintCallable)
+		int32 GetCurrentWeapon();
+
 	UFUNCTION(BlueprintCallable)
 		void SetIntAttribute(AttriName AttName, int32 value);
-
 	UFUNCTION(BlueprintCallable)
 		void SetFloatAttribute(AttriName AttName, float value);
 
 	UFUNCTION(BlueprintCallable)
 		int32 GetIntAttribute(AttriName AttName);
-
 	UFUNCTION(BlueprintCallable)
 		float GetFloatAttribute(AttriName AttName);
+
+	UFUNCTION(BlueprintImplementableEvent)
+		void RefreshBagUI();
+
+	UFUNCTION(BlueprintImplementableEvent)
+		void RefreshWeaponMesh();
 
 protected:
 	UFUNCTION(Server, Reliable)
@@ -99,9 +97,6 @@ protected:
 
 	UFUNCTION(Server, Reliable)
 		void ServerSetCurrentWeapon(int32 cw);
-
-	UFUNCTION()
-		void OnRep_CurrentWeaponDebug();
 
 	/** Resets HMD orientation in VR. */
 	void OnResetVR();

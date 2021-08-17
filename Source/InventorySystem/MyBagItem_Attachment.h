@@ -17,12 +17,9 @@ public:
 	AMyBagItem_Attachment();
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Replicated)
-		AActor* ParentWeapon;
+		int32 ParentWeaponId;
 
-	void SetParentWeapon(AActor* Weapon);
-
-	UFUNCTION(Server, Reliable)
-		void ServerSetParentWeapon(AActor* Weapon);
+	void SetParentWeapon(int32 WeaponId);
 
 	void EquipItem() override;
 
@@ -31,4 +28,5 @@ public:
 	bool IsEquiped() override;
 
 	void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
+
 };

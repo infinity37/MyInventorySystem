@@ -5,7 +5,6 @@ function weaponslot:Initialize()
 end
 
 function weaponslot:LoadWeaponSlot()
-    print("LoadWeaponSlot")
     local mypc = self:GetOwningPlayer()
     local backpack = mypc.MyBackPack
     self.WeaponWidget1.WeaponItem = backpack.WeaponSlot:Get(0)
@@ -14,7 +13,6 @@ end
 
 
 function weaponslot:LoadAttachmentSlot()
-    print("LoadAttachmentSlot")
     local mypc = self:GetOwningPlayer()
     local backpack = mypc.MyBackPack
     

@@ -23,9 +23,12 @@ function bagui:InitSlotId()
 end
 
 function bagui:switchSlot()
-    self:UnEquipWeaponInSlot(self.EquipedSlot)
-    self:EquipWeaponInSlot(1-self.EquipedSlot)
+    --[[self:UnEquipWeaponInSlot(self.EquipedSlot)
     self.EquipedSlot = 1-self.EquipedSlot
+    self:EquipWeaponInSlot(self.EquipedSlot)]]--
+    local mypc = self:GetOwningPlayer()
+    local backpack = mypc.MyBackPack
+    backpack:ChangeEquipedSlot()
 end
 
 function bagui:EquipedWeaponReload() 
@@ -33,17 +36,19 @@ function bagui:EquipedWeaponReload()
     local backpack = mypc.MyBackPack
     if (backpack.WeaponSlot:Get(self.EquipedSlot) ~= nil) then
         local myweapon = backpack.WeaponSlot:Get(self.EquipedSlot)
-        myweapon:Reload()
+        backpack:ReloadWeapon(myweapon.ItemTypeId)
         self:RefreshBagUI()
     end
 end
 
 function bagui:EquipWeaponInSlot(SlotId)
-    local backpack = self:GetOwningPlayer().MyBackPack
+   local backpack = self:GetOwningPlayer().MyBackPack
+    print(SlotId)
+    print(backpack.WeaponSlot:Get(SlotId))
     if (backpack.WeaponSlot:Get(SlotId) ~= nil) then
         local weapontoequip = backpack.WeaponSlot:Get(SlotId)
         if (weapontoequip:IsEquiped() ~= true) then 
-            weapontoequip:EquipItem()
+            backpack:EquipWeapon(weapontoequip.ItemTypeId)
             local myplayer = self:GetOwningPlayerPawn()
             myplayer:AttachWeapon(weapontoequip.ItemTypeId)
             self:RefreshBagUI()
@@ -58,7 +63,7 @@ function bagui:UnEquipWeaponInSlot(SlotId)
     if (backpack.WeaponSlot:Get(SlotId) ~= nil) then
         local weapontoequip = backpack.WeaponSlot:Get(SlotId)
         if (weapontoequip:IsEquiped() == true) then 
-            weapontoequip:UnEquipItem()
+            backpack:UnEquipWeapon(weapontoequip.ItemTypeId)
             local myplayer = self:GetOwningPlayerPawn()
             myplayer:DetachWeapon(weapontoequip.ItemTypeId)
         end
@@ -66,8 +71,6 @@ function bagui:UnEquipWeaponInSlot(SlotId)
 end
 
 function bagui:IsDragBackOperation(DropPositionX, MyGeometry)
-    --local cpsNormalSpace = wll.SlotAsCanvasSlot(self.UINormalSpace)
-    print("TestDragBack")
     local vector1 = wll.SlotAsCanvasSlot(self.UINormalSpace):GetPosition()
     local vector2 = sbl.GetLocalSize(MyGeometry)
     local nowposx,nowposy = kml.BreakVector2D(vector1 + vector2, nowposx, nowposy)
@@ -108,6 +111,70 @@ function bagui:IsSlotOperation(DropPositionX, DropPositionY, MyGeometry)
         end
     end
     return -1;
+end
+
+function bagui:GetSwitchId()
+    local mypc = self:GetOwningPlayer()
+    local backpack = mypc.MyBackPack
+    if (backpack.EquipedSlotId == 0) then
+        return tostring("switch to weapon2")
+    else
+        return tostring("switch to weapon1")
+    end
+end
+
+function bagui:DragFromNormalSpace(WidgetDrag, PositionX, PositionY, MyGeometry)
+    local itemwidget = WidgetDrag.WidgetReference
+    if (self:IsDropOperation(PositionX, MyGeometry)) then
+        itemwidget:DropItemFunction()
+        return true
+    else
+        local slotid = self:IsSlotOperation(PositionX, PositionY, MyGeometry)
+        if (slotid >= 0) then
+            local itemtype = math.modf(itemwidget.ItemTypeId/100)
+            if (itemtype == 5) then
+                itemwidget:AddWeapontoSlot(slotid)
+                return true
+            elseif (itemtype == 2) then
+                itemwidget:AddAttachmenttoSlot(slotid)
+                return true
+            else
+                return true
+            end
+        else
+            return true
+        end
+    end
+end
+
+function bagui:DragFromWeaponSlot(WidgetDrag, PositionX, PositionY, MyGeometry)
+    local weaponwidget = WidgetDrag.WidgetReference
+    if (self:IsDragBackOperation(PositionX, MyGeometry)) then
+        weaponwidget:RemoveWeaponfromSlot()
+        local myplayer = self:GetOwningPlayerPawn()
+        myplayer:DetachWeapon()
+        return true
+    else
+        if (self:IsDropOperation(PositionX, MyGeometry)) then
+            weaponwidget:DropWeaponfromSlot()
+            local myplayer = self:GetOwningPlayerPawn()
+            myplayer:DetachWeapon()
+            return true
+        end
+    end
+end
+
+function bagui:DragFromAttachmentSlot(WidgetDrag, PositionX, PositionY, MyGeometry)
+    local attwidget = WidgetDrag.WidgetReference
+    if (self:IsDragBackOperation(PositionX, MyGeometry)) then
+        attwidget:RemoveAttachmentfromSlot()
+        return true
+    else
+        if (self:IsDropOperation(PositionX, MyGeometry)) then
+            attwidget:DropAttachmentfromSlot()
+            return true
+        end
+    end
 end
 
 return bagui

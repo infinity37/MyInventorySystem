@@ -24,4 +24,7 @@ public:
 	UFUNCTION(BlueprintCallable)
 		int32 GetItemCountById(int TypeId);
 
+	UFUNCTION(BlueprintCallable)
+		int32 GetWeaponDamageById(int TypeId);
+
 };

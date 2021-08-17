@@ -10,8 +10,8 @@
 #include "Net/UnrealNetwork.h"
 #include "GameFramework/SpringArmComponent.h"
 #include "PickUps.h"
-
 #include "MyBagItem_Weapon.h"
+#include "MyPlayerController.h"
 
 //////////////////////////////////////////////////////////////////////////
 // AInventorySystemCharacter
@@ -154,25 +154,8 @@ void AInventorySystemCharacter::MoveRight(float Value)
 	}
 }
 
-void AInventorySystemCharacter::SetCurrentWeapon(int32 cw) {
-//void AInventorySystemCharacter::SetCurrentWeapon(AActor* cw) {
-	if (GetLocalRole() < ROLE_Authority) {
-		ServerSetCurrentWeapon(cw);
-	}
-	else {
-		CurrentWeaponId = cw;
-	}
-}
 
-int32 AInventorySystemCharacter::GetCurrentWeapon() {
-//AActor* AInventorySystemCharacter::GetCurrentWeapon() {
-	return CurrentWeaponId;
-}
-
-void AInventorySystemCharacter::ServerSetCurrentWeapon_Implementation(int32 cw) {
-//void AInventorySystemCharacter::ServerSetCurrentWeapon_Implementation(AActor* cw) {
-	SetCurrentWeapon(cw);
-}
+/* -------------------------My Code-----------------------------*/
 
 void AInventorySystemCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps)const {
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
@@ -183,6 +166,26 @@ void AInventorySystemCharacter::GetLifetimeReplicatedProps(TArray<FLifetimePrope
 	DOREPLIFETIME(AInventorySystemCharacter, Energy);
 	DOREPLIFETIME(AInventorySystemCharacter, EnergyMul);
 }
+
+
+int32 AInventorySystemCharacter::GetCurrentWeapon() {
+	return CurrentWeaponId;
+}
+
+void AInventorySystemCharacter::SetCurrentWeapon(int32 cw) {
+	if (GetLocalRole() < ROLE_Authority) {
+		ServerSetCurrentWeapon(cw);
+	}
+	else {
+		CurrentWeaponId = cw;
+	}
+}
+
+void AInventorySystemCharacter::ServerSetCurrentWeapon_Implementation(int32 cw) {
+	SetCurrentWeapon(cw);
+}
+
+
 
 void AInventorySystemCharacter::GenerateNewPickUp_Implementation(int32 TypeId, int32 Count) {
 	char dir[] = "/Game/BluePrints/BP_Item000.BP_Item000_C";
@@ -201,10 +204,6 @@ void AInventorySystemCharacter::GenerateNewPickUp_Implementation(int32 TypeId, i
 		myposition.Z = 0.0f;
 		nactor->SetActorLocation(myposition + FVector(100.0f, 100.0f, 170.0f));
 	}
-}
-
-void AInventorySystemCharacter::OnRep_CurrentWeaponDebug() {
-	//GEngine->AddOnScreenDebugMessage(-1, 10.0f, FColor::Red, FString::Printf(TEXT("OnRep:CurrenWeapon Pointer is %d"), this->CurrentWeaponId));
 }
 
 void AInventorySystemCharacter::SetIntAttribute(AttriName AttName, int32 value) {
@@ -254,14 +253,22 @@ void AInventorySystemCharacter::ServerSetFloatAttribute_Implementation(AttriName
 int32 AInventorySystemCharacter::GetIntAttribute(AttriName AttName) {
 	switch (AttName)
 	{
-	case AttriName::Damage:
-		return Damage; break;
+	case AttriName::Damage: {
+		AMyPlayerController* pc = Cast<AMyPlayerController>(GetController());
+		return pc->GetWeaponDamageById(CurrentWeaponId); 
+		//return Damage;
+		break;
+	}
 	case AttriName::Energy:
 		return Energy; break;
 	case AttriName::Health:
 		return CurrentHealth; break;
-	case AttriName::TrueDamage:
-		return Damage * DamageMul; break;
+	case AttriName::TrueDamage: {
+		//return Damage * DamageMul; 
+		AMyPlayerController* pc = Cast<AMyPlayerController>(GetController());
+		return pc->GetWeaponDamageById(CurrentWeaponId) * DamageMul;
+		break;
+	}
 	case AttriName::TrueEnergy:
 		return Energy * EnergyMul; break;
 	}

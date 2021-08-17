@@ -17,19 +17,19 @@ class INVENTORYSYSTEM_API AMyBagItem_Weapon : public ABagItem
 public:
 	AMyBagItem_Weapon();
 
-	UPROPERTY(EditAnywhere, BlueprintReadOnly)
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Replicated)
 		int32 Damage;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated)
 		int32 MaxAmmoCount;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, ReplicatedUsing = OnRep_RefreshBagUI)
 		int32 AmmoInChip;
 
-	UPROPERTY(EditAnywhere, BlueprintReadOnly)
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Replicated)
 		int32 AmmoType;
 
-	UPROPERTY(EditAnywhere, BlueprintReadOnly)
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Replicated)
 		TArray<int32> AttachmentType;
 
 	void EquipItem() override;
@@ -38,18 +38,14 @@ public:
 
 	bool IsEquiped() override;
 
-	UFUNCTION(BlueprintCallable)
-		void Reload();
+	void Reload();
 
 	void SetAmmoInChip(int32 aic);
 
 	void SetMaxAmmoCount(int32 mac);
 
-	UFUNCTION(Server, Reliable)
-		void ServerSetAmmoInChip(int32 aic);
-
-	UFUNCTION(Server, Reliable)
-		void ServerSetMaxAmmoCount(int32 mac);
+	void SetDamage(int32 dmg);
 
 	void GetLifetimeReplicatedProps(TArray< FLifetimeProperty >& OutLifetimeProps) const override;
+
 };

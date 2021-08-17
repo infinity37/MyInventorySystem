@@ -13,6 +13,7 @@
 #include "MyPlayerController.h"
 #include "PickUps.h"
 #include "InventorySystemCharacter.h"
+#include "engine/actorchannel.h"
 
 // Sets default values for this component's properties
 UBackPackComponent::UBackPackComponent()
@@ -55,6 +56,25 @@ void UBackPackComponent::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& O
 	DOREPLIFETIME_CONDITION(UBackPackComponent, CurrentWeight, COND_OwnerOnly);
 	DOREPLIFETIME_CONDITION(UBackPackComponent, NormalSpace, COND_OwnerOnly);
 	DOREPLIFETIME_CONDITION(UBackPackComponent, BackPackSize, COND_OwnerOnly);
+	DOREPLIFETIME_CONDITION(UBackPackComponent, WeaponSlot, COND_OwnerOnly);
+	DOREPLIFETIME_CONDITION(UBackPackComponent, AttachmentSlot, COND_OwnerOnly);
+	DOREPLIFETIME_CONDITION(UBackPackComponent, EquipedSlotId, COND_OwnerOnly);
+}
+
+bool UBackPackComponent::ReplicateSubobjects(class UActorChannel* Channel, class FOutBunch* Bunch, FReplicationFlags* RepFlags){
+	bool WroteSomething = Super::ReplicateSubobjects(Channel, Bunch, RepFlags);
+	return WroteSomething;
+}
+
+AActor* UBackPackComponent::GetItemById(int32 TypeId) {
+	for (int i = 0; i < NormalSpace.Num(); i++)
+		if (NormalSpace[i] != NULL && NormalSpace[i]->ItemTypeId == TypeId)
+			return NormalSpace[i];
+	return NULL;
+}
+
+bool UBackPackComponent::IsNewItem(int32 ItemTypeId) {
+	return GetItemById(ItemTypeId) == NULL;
 }
 
 bool UBackPackComponent::CanAddItem(int32 ItemTypeId, int32 Count) {
@@ -66,8 +86,9 @@ bool UBackPackComponent::CanAddItem(int32 ItemTypeId, int32 Count) {
 		return CurrentWeight + ItemToAdd->ItemWeight * Count <= BackPackSize;
 	}
 	else {
+		ABagItem* oldItem = Cast<ABagItem>(GetItemById(ItemTypeId));
 		bool cond1 = CurrentWeight + ItemToAdd->ItemWeight * Count <= BackPackSize;
-		bool cond2 = NormalSpace[ItemTypeId]->ItemCount + Count <= ItemToAdd->ItemMaxCount;
+		bool cond2 = oldItem->ItemCount + Count <= ItemToAdd->ItemMaxCount;
 		return (cond1 && cond2);
 	}
 	
@@ -78,10 +99,6 @@ void UBackPackComponent::AddItem(int32 ItemTypeId, int32 Count, AActor* otherAct
 	if (IsNewItem(ItemTypeId))
 		AddNewItem(ItemTypeId, Count, otherActor);
 	else AddOldItem(ItemTypeId, Count);
-}
-
-bool UBackPackComponent::IsNewItem(int32 ItemTypeId) {
-	return (!NormalSpace.Contains(ItemTypeId));
 }
 
 void UBackPackComponent::AddNewItem(int32 ItemTypeId, int32 Count, AActor* otherActor) {
@@ -138,141 +155,99 @@ void UBackPackComponent::AddNewItem(int32 ItemTypeId, int32 Count, AActor* other
 	newitem->ItemTypeId = ItemTypeId;
 	newitem->SetItemOwner(otherActor);
 	newitem->AddItem(Count);
-	NormalSpace.Add(ItemTypeId, newitem);
+	NormalSpace.Add(newitem);
 	CurrentWeight += Count * ItemToAdd->ItemWeight;
 }
 
 void UBackPackComponent::AddOldItem(int32 ItemTypeId, int32 Count) {
-	NormalSpace[ItemTypeId]->AddItem(Count);
-	CurrentWeight += Count * ( NormalSpace[ItemTypeId]->ItemInfo->ItemWeight );
+	ABagItem* oldItem = Cast<ABagItem>(GetItemById(ItemTypeId));
+	oldItem->AddItem(Count);
+	CurrentWeight += Count * ( oldItem->ItemInfo->ItemWeight );
 }
 
-void UBackPackComponent::UseItem(int32 ItemTypeId) {
-	ServerUseItem(ItemTypeId);
-	ClientUseItem(ItemTypeId);
-}
-
-void UBackPackComponent::ServerUseItem_Implementation(int32 ItemTypeId) {
+void UBackPackComponent::UseItem_Implementation(int32 ItemTypeId) {
+	ABagItem* ThisItem = Cast<ABagItem>(GetItemById(ItemTypeId));
 	if ((ItemTypeId / 100) % 10 == 4) {
-		AMyBagItem_Consumable* myItem = Cast<AMyBagItem_Consumable>(NormalSpace[ItemTypeId]);
+		AMyBagItem_Consumable* myItem = Cast<AMyBagItem_Consumable>(ThisItem);
 		myItem->UseItem();
 		CurrentWeight -= myItem->ItemInfo->ItemWeight;
 		if (myItem->ItemCount <= 0) {
-			NormalSpace.Remove(ItemTypeId);
+			NormalSpace.Remove(ThisItem);
 			myItem->Destroy();
 		}
 	}
 	else if ((ItemTypeId / 100) % 10 == 1) {
-		AMyBagItem_Ammo* myItem = Cast<AMyBagItem_Ammo>(NormalSpace[ItemTypeId]);
+		AMyBagItem_Ammo* myItem = Cast<AMyBagItem_Ammo>(ThisItem);
 		myItem->UseItem();
 		CurrentWeight -= myItem->ItemInfo->ItemWeight;
 		if (myItem->ItemCount <= 0) {
-			NormalSpace.Remove(ItemTypeId);
+			NormalSpace.Remove(ThisItem);
 			myItem->Destroy();
 		}
 	}
 }
 
-void UBackPackComponent::ClientUseItem_Implementation(int32 ItemTypeId) {
-	if ((ItemTypeId / 100) % 10 == 4) {
-		AMyBagItem_Consumable* myItem = Cast<AMyBagItem_Consumable>(NormalSpace[ItemTypeId]);
-		myItem->ItemCount -= 1;
-		if (myItem->ItemCount <= 0) {
-			NormalSpace.Remove(ItemTypeId);
-			myItem->Destroy();
-		}
-	}
-	else if ((ItemTypeId / 100) % 10 == 1) {
-		AMyBagItem_Ammo* myItem = Cast<AMyBagItem_Ammo>(NormalSpace[ItemTypeId]);
-		myItem->ItemCount -= 1;
-		if (myItem->ItemCount <= 0) {
-			NormalSpace.Remove(ItemTypeId);
-			myItem->Destroy();
-		}
-	}
-}
-
-void UBackPackComponent::DropItem(int32 ItemTypeId, int32 Count) {
-	ServerDropItem(ItemTypeId, Count);
-	ClientDropItem(ItemTypeId, Count);
-}
-
-void UBackPackComponent::ServerDropItem_Implementation(int32 ItemTypeId, int32 Count) {
-	if (!NormalSpace.Contains(ItemTypeId))return;
-	if (NormalSpace[ItemTypeId]->ItemCount < Count)return;
-	NormalSpace[ItemTypeId]->ItemCount = NormalSpace[ItemTypeId]->ItemCount - Count;
-	CurrentWeight -= Count * NormalSpace[ItemTypeId]->ItemInfo->ItemWeight;
-	AInventorySystemCharacter* myplayer = Cast<AInventorySystemCharacter>(NormalSpace[ItemTypeId]->ItemBelongTo);
-	if (NormalSpace[ItemTypeId]->ItemCount <= 0) {
-		NormalSpace[ItemTypeId]->Destroy();
-		NormalSpace.Remove(ItemTypeId);
+void UBackPackComponent::DropItem_Implementation(int32 ItemTypeId, int32 Count) {
+	ABagItem* ThisItem = Cast<ABagItem>(GetItemById(ItemTypeId));
+	if (ThisItem == NULL)return;
+	if (ThisItem->ItemCount < Count)return;
+	ThisItem->ItemCount = ThisItem->ItemCount - Count;
+	CurrentWeight -= Count * ThisItem->ItemInfo->ItemWeight;
+	AInventorySystemCharacter* myplayer = Cast<AInventorySystemCharacter>(ThisItem->ItemBelongTo);
+	if (ThisItem->ItemCount <= 0) {
+		NormalSpace.Remove(ThisItem);
+		ThisItem->Destroy();
 	}
 	myplayer->GenerateNewPickUp(ItemTypeId, Count);
 }
 
-void UBackPackComponent::ClientDropItem_Implementation(int32 ItemTypeId, int32 Count) {
-	NormalSpace[ItemTypeId]->ItemCount = NormalSpace[ItemTypeId]->ItemCount - Count;
-	CurrentWeight -= Count * NormalSpace[ItemTypeId]->ItemInfo->ItemWeight;
-	if (NormalSpace[ItemTypeId]->ItemCount <= 0) {
-		NormalSpace[ItemTypeId]->Destroy();
-		NormalSpace.Remove(ItemTypeId);
-	}
-}
 
-bool UBackPackComponent::AddToAttachmentSlot(int32 ItemTypeId, int32 pos) {
-	if (!NormalSpace.Contains(ItemTypeId)) return false;
-	if (WeaponSlot[pos] == NULL) return false;
+void UBackPackComponent::AddToAttachmentSlot_Implementation(int32 ItemTypeId, int32 pos) {
+	ABagItem* ThisItem = Cast<ABagItem>(GetItemById(ItemTypeId));
+	if (ThisItem == NULL) return ;
+	if (WeaponSlot[pos] == NULL) return ;
 	AMyBagItem_Weapon* ParentWeapon = Cast<AMyBagItem_Weapon>(WeaponSlot[pos]);
 	pos = pos << 1 | ((ItemTypeId / 10) & 1);
-	if (ParentWeapon->AttachmentType[(ItemTypeId / 10) & 1] != ItemTypeId)return false;//检查是否可以放进来
+	if (ParentWeapon->AttachmentType[(ItemTypeId / 10) & 1] != ItemTypeId)return ;//检查是否可以放进来
 
-	AMyBagItem_Attachment* AttItem = Cast<AMyBagItem_Attachment>(NormalSpace[ItemTypeId]);
+	AMyBagItem_Attachment* AttItem = Cast<AMyBagItem_Attachment>(ThisItem);
 	if (AttachmentSlot[pos] != NULL) {
 		RemoveFromAttachmentSlot(pos);
 	}
 	
-	AttachmentSlot[pos] = NormalSpace[ItemTypeId];
-	AttItem->SetParentWeapon(Cast<AActor>(ParentWeapon));
+	AttachmentSlot[pos] = AttItem;
+	AttItem->SetParentWeapon(ParentWeapon->ItemTypeId);
 	AttItem->SetInSlotState(pos);
 	AttItem->EquipItem();
-	return true;
 }
 
-bool UBackPackComponent::AddToAvatarSlot(int32 ItemTypeId, int32 pos) {
-	if (!NormalSpace.Contains(ItemTypeId)) return false;
-	AMyBagItem_Avatar* AvaItem = Cast<AMyBagItem_Avatar>(NormalSpace[ItemTypeId]);
-	if (AvatarSlot[pos] != NULL) {
-		RemoveFromAvatarSlot(pos);
-	}
-	AvatarSlot[pos] = NormalSpace[ItemTypeId];
-	AvaItem->EquipItem();
-	AvaItem->SetInSlotState(pos);
-	return true;
-}
-
-void UBackPackComponent::AddToWeaponSlot(int32 ItemTypeId, int32 pos) {
-	if (!NormalSpace.Contains(ItemTypeId)) return ;
-	AMyBagItem_Weapon* WeapItem = Cast<AMyBagItem_Weapon>(NormalSpace[ItemTypeId]);
+void UBackPackComponent::AddToWeaponSlot_Implementation(int32 ItemTypeId, int32 pos) {
+	ABagItem* ThisItem = Cast<ABagItem>(GetItemById(ItemTypeId));
+	if (ThisItem == NULL) return ;
+	AMyBagItem_Weapon* WeapItem = Cast<AMyBagItem_Weapon>(ThisItem);
 	if (WeaponSlot[pos] != NULL) {
 		RemoveFromWeaponSlot(pos);
 	}
-	WeaponSlot[pos] = NormalSpace[ItemTypeId];
 	WeapItem->SetInSlotState(pos);
+	WeaponSlot[pos] = ThisItem;
+	if (pos == EquipedSlotId)
+		EquipWeapon(WeapItem->ItemTypeId);
 	return ;
 }
 
-void UBackPackComponent::RemoveFromWeaponSlot(int32 pos) {
+void UBackPackComponent::RemoveFromWeaponSlot_Implementation(int32 pos) {
 	if (WeaponSlot[pos] == NULL) return;
 	if (AttachmentSlot[pos << 1]) RemoveFromAttachmentSlot(pos << 1);
 	if (AttachmentSlot[pos << 1 | 1])RemoveFromAttachmentSlot(pos << 1 | 1);
 
 	AMyBagItem_Weapon* OldWeapItem = Cast<AMyBagItem_Weapon>(WeaponSlot[pos]);
-	if (OldWeapItem->IsEquiped())OldWeapItem->UnEquipItem();
+	if (OldWeapItem->IsEquiped())
+		UnEquipWeapon(OldWeapItem->ItemTypeId);
 	OldWeapItem->SetInSlotState(-1);
 	WeaponSlot[pos] = NULL;
 }
 
-void UBackPackComponent::RemoveFromAttachmentSlot(int32 pos) {
+void UBackPackComponent::RemoveFromAttachmentSlot_Implementation(int32 pos) {
 	if (AttachmentSlot[pos] == NULL) return;
 
 	AMyBagItem_Attachment* OldAttItem = Cast<AMyBagItem_Attachment>(AttachmentSlot[pos]);
@@ -281,13 +256,46 @@ void UBackPackComponent::RemoveFromAttachmentSlot(int32 pos) {
 	AttachmentSlot[pos] = NULL;
 }
 
-void UBackPackComponent::RemoveFromAvatarSlot(int32 pos) {
-	if (AvatarSlot[pos] == NULL) return;
 
-	AMyBagItem_Avatar* OldAvaItem = Cast<AMyBagItem_Avatar>(AvatarSlot[pos]);
-	OldAvaItem->UnEquipItem();
-	OldAvaItem->SetInSlotState(-1);
-	AvatarSlot[pos] = NULL;
+void UBackPackComponent::EquipWeapon_Implementation(int WeaponId) {
+	ABagItem* ThisItem = Cast<ABagItem>(GetItemById(WeaponId));
+	ThisItem->EquipItem();
+	AMyPlayerController* pc = Cast<AMyPlayerController>(Owner);
+	AInventorySystemCharacter* player = Cast<AInventorySystemCharacter>(pc->GetCharacter());
+	player->RefreshWeaponMesh();
+
+}
+
+void UBackPackComponent::UnEquipWeapon_Implementation(int WeaponId) {
+	ABagItem* ThisItem = Cast<ABagItem>(GetItemById(WeaponId));
+	ThisItem->UnEquipItem();
+	AMyPlayerController* pc = Cast<AMyPlayerController>(Owner);
+	AInventorySystemCharacter* player = Cast<AInventorySystemCharacter>(pc->GetCharacter());
+	player->RefreshWeaponMesh();
+}
+
+
+void UBackPackComponent::ReloadWeapon_Implementation(int WeaponId) {
+	AMyBagItem_Weapon* ThisItem = Cast<AMyBagItem_Weapon>(GetItemById(WeaponId));
+	ThisItem->Reload();
+}
+
+void UBackPackComponent::ChangeEquipedSlot_Implementation() {
+	if (WeaponSlot[EquipedSlotId] != NULL) {
+		AMyBagItem_Weapon* OldWeapon = Cast<AMyBagItem_Weapon>(WeaponSlot[EquipedSlotId]);
+		UnEquipWeapon(OldWeapon->ItemTypeId);
+	}
+	EquipedSlotId = 1 - EquipedSlotId;
+	if (WeaponSlot[EquipedSlotId] != NULL) {
+		AMyBagItem_Weapon* NewWeapon = Cast<AMyBagItem_Weapon>(WeaponSlot[EquipedSlotId]);
+		EquipWeapon(NewWeapon->ItemTypeId);
+	}
+}
+
+void UBackPackComponent::OnRep_RefreshUI() {
+	AMyPlayerController* pc = Cast<AMyPlayerController>(Owner);
+	AInventorySystemCharacter* player = Cast<AInventorySystemCharacter>(pc->GetCharacter());
+	player->RefreshBagUI();
 }
 
 void UBackPackComponent::AddAmmoToNormalSpace(int32 ItemTypeId, int32 Count, AActor* otherActor) {
@@ -304,13 +312,19 @@ void UBackPackComponent::AddAmmoToNormalSpace(int32 ItemTypeId, int32 Count, AAc
 		newitem->ItemTypeId = ItemTypeId;
 		newitem->SetItemOwner(otherActor);
 		newitem->AddItem(Count);
-		NormalSpace.Add(ItemTypeId, newitem);
+		NormalSpace.Add(newitem);
 	}
 	else {
-		NormalSpace[ItemTypeId]->AddItem(Count);
+		AMyBagItem_Ammo* OldItem = Cast<AMyBagItem_Ammo>(GetItemById(ItemTypeId));
+		OldItem->AddItem(Count);
 	}
 }
 
-void UBackPackComponent::OnRepNormalSpaceDebug() {
-	GEngine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Green, TEXT("NormalSpaceReplicated"));
+
+void UBackPackComponent::RemoveFromAvatarSlot(int32 pos) {
+	return;
+}
+
+bool UBackPackComponent::AddToAvatarSlot(int32 ItemTypeId, int32 pos) {
+	return true;
 }
