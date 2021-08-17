@@ -59,6 +59,9 @@ protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Replicated)
 		float EnergyMul;
 
+	UPROPERTY(VisibleAnywhere, BlueprintReadWrite)
+		TArray<AActor*>PickUpList;
+
 public:
 
 	void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps)const override;
