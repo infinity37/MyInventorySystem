@@ -44,14 +44,14 @@ end
 
 function itemwidget:OnMouseEnter(MyGeometry,MouseEvent)
     local myborder = self.WidgetSizeBox
-    myborder:SetHeightOverride(150.0)
+    myborder:SetHeightOverride(140.0)
     self.ButtonDrop:SetVisibility(0)
     self.ButtonUse:SetVisibility(0)
 end
 
 function itemwidget:OnMouseLeave(MouseEvent)
     local myborder = self.WidgetSizeBox
-    myborder:SetHeightOverride(110.0)
+    myborder:SetHeightOverride(100.0)
     self.ButtonDrop:SetVisibility(2)
     self.ButtonUse:SetVisibility(2)
 end

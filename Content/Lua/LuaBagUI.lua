@@ -117,9 +117,9 @@ function bagui:GetSwitchId()
     local mypc = self:GetOwningPlayer()
     local backpack = mypc.MyBackPack
     if (backpack.EquipedSlotId == 0) then
-        return tostring("switch to weapon2")
+        return tostring("2")
     else
-        return tostring("switch to weapon1")
+        return tostring("1")
     end
 end
 
